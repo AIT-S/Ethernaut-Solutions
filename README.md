@@ -101,10 +101,11 @@ contract AttackForce {
 ```
 
 ## 8. Vault
-Essentially your private variables are completely exposed on a public chain simply by using a block explorer. The private visibility simply restricts other contracts from calling it. Ethereum stores data in 32 bytes slots. https://ethereum.stackexchange.com/questions/13910/how-to-read-a-private-variable-from-a-contract
-1. Deploy contract in truffle to get ABI (inside of ./build/contracts), this tells you where the variable is stored (index 1)
-2. truffle console --network ropsten to connect to ropsten (make sure your truffle.js is updated accordingly)
-3. web3.eth.getStorageAt("contract address", index)
+Your private variables are private if you try to access it the normal way e.g. via another contract but the problem is that everything on the blockchain is visible so even if the variable's visibility is set to private, you can still access it based on its index in the smart contract. Learn more about this [here](https://solidity.readthedocs.io/en/latest/miscellaneous.html#layout-of-state-variables-in-storage).
+```
+const password = await web3.eth.getStorageAt(instance, 1);
+await contract.unlock(password);
+```
 
 ## 9. King
 This is a classic example of DDoS with unexpected revert whereby when the contract tries to do a transfer back to you address (contract), your payable fallback function will simply revert (or if you don't have 1) thus ensuring that nobody can overtake your position as king. 
