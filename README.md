@@ -130,10 +130,8 @@ contract AttackForce {
 ```
 
 ## 10. Re-entrancy
-The same hack as the DAO hack. Due to the ordering of the transactions, the malicious contract is able to keep calling the withdraw function as the internal state is not updated. When the call.value is processed, the control is handed back to the fallback function of the malicious contract which then calls the withdraw function again.
-Note that the number of times the fallback function runs is based on the amt of gas submitted when you call "bleedItEmpty". For example, running bleedItEmpty with 1 mil gas let me run my fallback function 29 times. Increasing it to 2 mil let me run it 47 times. 
-
-You shouldn't try and give it like 7.8mil gas and try running it because it might reach the maximum stack size exceeded error. Just increase the amount of ether you withdraw each time!
+The same hack as the DAO hack. Due to the ordering of the transactions, the malicious contract is able to keep calling the withdraw function as the internal state is only updated after the transfer is done. When the call.value is processed, the control is handed back to the `fallback` function of the malicious contract which then calls the withdraw function again.
+Note that the number of times the fallback function runs is based on the amt of gas submitted when you call `maliciousWithdraw()`. 
 
 Also, not sure why calling function via address.call() doesn't work for withdraw but it works for donating...
 ```
