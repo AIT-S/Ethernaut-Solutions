@@ -260,7 +260,7 @@ contract AttackGatekeeperOne {
 }
 ```
 
-## 13. Gatekeeper Two
+## 14. Gatekeeper Two
 Very similar to the previous level except it requires you to know a little bit more about bitwise operations (specifically XOR) and about `extcodesize`.
 
 1. The workaround to `gateOne` is to initiate the transaction from a smart contract since from the victim's contract pov, `msg.sender` = address of the smart contract while `tx.origin` is your address. 
